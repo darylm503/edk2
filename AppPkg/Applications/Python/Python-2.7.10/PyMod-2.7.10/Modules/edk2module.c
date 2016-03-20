@@ -2,7 +2,7 @@
     OS-specific module implementation for EDK II and UEFI.
     Derived from posixmodule.c in Python 2.7.2.
 
-    Copyright (c) 2015, Daryl McDaniel. All rights reserved.<BR>
+    Copyright (c) 2015 - 2016, Daryl McDaniel. All rights reserved.<BR>
     Copyright (c) 2011 - 2012, Intel Corporation. All rights reserved.<BR>
     This program and the accompanying materials are licensed and made available under
     the terms and conditions of the BSD License that accompanies this distribution.
@@ -13,6 +13,9 @@
     WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 #define PY_SSIZE_T_CLEAN
+
+#include  <Library/UefiBootServicesTableLib.h>
+#include  <Library/UefiRuntimeServicesTableLib.h>
 
 #include "Python.h"
 #include "structseq.h"
@@ -4166,6 +4169,7 @@ PyMODINIT_FUNC
 INITFUNC(void)
 {
     PyObject *m;
+    PyObject *obj;
 
 #ifndef UEFI_C_SOURCE
   PyObject *v;
@@ -4223,8 +4227,29 @@ INITFUNC(void)
     //Py_INCREF((PyObject*) &StatVFSResultType);
     //PyModule_AddObject(m, "statvfs_result",
     //                   (PyObject*) &StatVFSResultType);
-    initialized = 1;
 
+    // Provide access to basic UEFI objects: gImageHandle, gST, gBS, gRT
+    do {  // Cheap way of structured error handling.  Errors are caught by code after the while.
+      obj = PyLong_FromVoidPtr(gImageHandle);
+      if(PyModule_AddObject(m, "gImageHandle", obj) != 0)    break;
+
+      obj = PyLong_FromVoidPtr((void*)gST);
+      if(PyModule_AddObject(m, "gST", obj) != 0)    break;
+
+      obj = PyLong_FromVoidPtr((void*)gBS);
+      if(PyModule_AddObject(m, "gBS", obj) != 0)    break;
+
+      obj = PyLong_FromVoidPtr((void*)gRT);
+      if(PyModule_AddObject(m, "gRT", obj) != 0)    break;
+
+      obj = NULL;
+    } while(FALSE);
+
+    if(obj != NULL) {
+      Py_DECREF(obj);
+    }
+
+    initialized = 1;
 }
 
 #ifdef __cplusplus
